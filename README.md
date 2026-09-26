@@ -26,8 +26,8 @@ The examples below cover Next.js and Node. Setting it up is four small steps, af
 Sign in with Sandbox is for Sandbox members. To use it in an app you build:
 
 1. **Deploy it first.** Linking needs your app's live https address. That first deploy can go out without a client id: it builds, protected pages send people to your login page, and the login page shows no button yet. You can set `SANDBOX_AUTH_CLIENT_SESSION_SECRET` straight away; only the client id waits for approval.
-2. **Link it** on the Vibes page at [members.sandbox.is/vibes](https://members.sandbox.is/vibes) (you sign in with Sandbox). Give its address, a local port for development if you want one, and any [profile fields](#profile-fields) you'd like to ask for.
-3. **Wait for an admin to approve it.** The Vibes page then shows your client id.
+2. **Link it** on the Developers page at [members.sandbox.is/developers](https://members.sandbox.is/developers) (you sign in with Sandbox). Give its address, a local port for development if you want one, and any [profile fields](#profile-fields) you'd like to ask for.
+3. **Wait for an admin to approve it.** The Developers page then shows your client id.
 4. **Add the id** to your app's environment ([configuration](#3-configuration)), including for its build step, and deploy again.
 
 What auth accepts as your app's address:
