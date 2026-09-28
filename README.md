@@ -33,7 +33,8 @@ Sign in with Sandbox is for Sandbox members. To use it in an app you build:
 What auth accepts as your app's address:
 
 - A bare https address with no path, like `https://polls.example.com`. It can't be changed later; a new address means linking again.
-- Not `localhost`, and nothing under `sandbox.is`. For local development, give a port instead.
+- Not `localhost`: for local development, give a port instead.
+- A subdomain of `sandbox.is` is fine, but not one Sandbox itself uses, like `auth.sandbox.is` or `members.sandbox.is`, nor the bare `sandbox.is`.
 - Auth then sends people back to exactly `https://<your address>/api/auth/callback`, and `http://localhost:<port>/api/auth/callback` if you gave a port.
 - If your app already uses `/api/auth/` for something else (NextAuth does), register a different callback path when you link it, like `/auth/sandbox/callback`. It has to be a plain path: letters, digits, `- _ . ~` and `/`. Then set it in [your callback route](#2-the-callback) and on [the button](#1-the-button) too.
 
