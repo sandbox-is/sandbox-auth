@@ -49,7 +49,7 @@ Install it from GitHub, pinned to a version tag. It isn't published to npm.
 ```json
 {
   "dependencies": {
-    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.7.2",
+    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.7.3",
     "jose": "^5"
   }
 }
