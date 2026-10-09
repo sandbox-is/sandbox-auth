@@ -25,10 +25,9 @@ The examples below cover Next.js and Node. Setting it up is four small steps, af
 
 Sign in with Sandbox is for Sandbox members. To use it in an app you build:
 
-1. **Deploy it first.** Linking needs your app's live https address. That first deploy can go out without a client id: it builds, protected pages send people to your login page, and the login page shows no button yet. You can set `SANDBOX_AUTH_CLIENT_SESSION_SECRET` straight away; only the client id waits for approval.
-2. **Link it** on the Developers page at [members.sandbox.is/developers](https://members.sandbox.is/developers) (you sign in with Sandbox). Give its address, a local port for development if you want one, and any [profile fields](#profile-fields) you'd like to ask for.
-3. **Wait for an admin to approve it.** The Developers page then shows your client id.
-4. **Add the id** to your app's environment ([configuration](#3-configuration)), including for its build step, and deploy again.
+1. **Deploy it first.** Linking needs your app's live https address. That first deploy can go out without a client id: it builds, protected pages send people to your login page, and the login page shows no button yet. You can set `SANDBOX_AUTH_CLIENT_SESSION_SECRET` straight away; only the client id waits until you link it.
+2. **Link it** on the Developers page at [members.sandbox.is/developers](https://members.sandbox.is/developers) (you sign in with Sandbox). Give its address, a local port for development if you want one, and any [profile fields](#profile-fields) you'd like to ask for. The page shows your client id right away.
+3. **Add the id** to your app's environment ([configuration](#3-configuration)), including for its build step, and deploy again.
 
 What auth accepts as your app's address:
 
@@ -49,7 +48,7 @@ Install it from GitHub, pinned to a version tag. It isn't published to npm.
 ```json
 {
   "dependencies": {
-    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.7.3",
+    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.7.4",
     "jose": "^5"
   }
 }
@@ -316,8 +315,8 @@ When someone signs out of Sandbox, their session ends in every app, not just the
 
 | what you see | what it means |
 |---|---|
-| no button on the login page | auth doesn't know the client id: it's mistyped, or the app isn't approved yet. The browser console says which id. |
-| auth says the app isn't one it knows (`invalid_client`) | the same: the id your app sends isn't a linked, approved app |
+| no button on the login page | auth doesn't know the client id: it's mistyped, or the app isn't linked (or was unlinked). The browser console says which id. |
+| auth says the app isn't one it knows (`invalid_client`) | the same: the id your app sends isn't a linked app |
 | auth refuses the return address (`invalid_redirect_uri`) | the callback URL your app sends isn't the one you linked: check the path in `callbackPath` and `data-callback`, and that you're on an address you linked |
 | back at login with `error=access_denied` | the person chose Cancel when asked to share their details |
 | back at login with `error=state_mismatch` or `no_transaction` | the sign-in started in another tab or browser, or took too long; starting again fixes it |
