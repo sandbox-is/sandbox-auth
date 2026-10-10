@@ -48,7 +48,7 @@ Install it from GitHub, pinned to a version tag. It isn't published to npm.
 ```json
 {
   "dependencies": {
-    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.9.0",
+    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.8.1",
     "jose": "^5"
   }
 }
@@ -255,7 +255,7 @@ Send it to the directory as its API asks. A pass lasts an hour, and the library 
 
 Signing out of Sandbox, or choosing Stop sharing for your app, ends the renewal. A pass already handed out still works until its hour is up.
 
-*Added in v0.8.0; the one-time trip for earlier sessions in v0.9.0.*
+*Added in v0.8.0; the one-time trip for earlier sessions in v0.8.1.*
 
 ## Sign out
 
