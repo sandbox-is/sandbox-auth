@@ -48,7 +48,7 @@ Install it from GitHub, pinned to a version tag. It isn't published to npm.
 ```json
 {
   "dependencies": {
-    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.7.4",
+    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.8.0",
     "jose": "^5"
   }
 }
@@ -215,7 +215,7 @@ The proxy can't use `next/headers`, so it reaches for the `core` functions direc
 ```ts
 // proxy.ts, next to your app directory
 import { NextRequest, NextResponse } from "next/server";
-import { resolveConfig, readSession, revoked, sessionToken } from "sandbox-auth/core";
+import { resolveConfig, readSession, revoked, sessionToken, renewSession, cookieName } from "sandbox-auth/core";
 
 const PUBLIC = ["/login", "/api/auth"];
 
@@ -231,6 +231,17 @@ export default async function proxy(request: NextRequest) {
     const cfg = resolveConfig();
     const session = await readSession(cfg, token);
     signedIn = session !== null && !(await revoked(cfg, session));
+
+    // Keep the member pass fresh, so every page can use it (getMemberPass).
+    const renewed = signedIn ? await renewSession(cfg, token) : null;
+    if (renewed) {
+      const secure = request.nextUrl.protocol === "https:";
+      const name = cookieName(cfg, secure);
+      request.cookies.set(name, renewed);
+      const response = NextResponse.next({ request: { headers: request.headers } });
+      response.cookies.set(name, renewed, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: cfg.sessionTtl });
+      return response;
+    }
   }
 
   // No session, or one from before a Sandbox sign-out → back to login.
@@ -248,6 +259,31 @@ export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)
 On a plain **Node** server there's no separate step. Call `sandbox.getSession(req)` at the top of each protected handler — it runs the same sign-out check — and redirect when it returns `null`.
 
 ---
+
+## Act for the member at the directory
+
+The members directory has an API apps can call for a signed-in member, such as searching for other members. Each call needs a **member pass**: a short-lived token from auth that proves which member is signed in to your app. The directory checks it.
+
+```ts
+// Next.js — in a route handler, server action or server component
+import { getMemberPass } from "sandbox-auth/next";
+
+const pass = await getMemberPass(); // a string, or null if nobody is signed in
+```
+
+```js
+// Node
+const pass = await sandbox.getMemberPass(req, res);
+```
+
+Send it to the directory as its API asks. A pass lasts an hour, and the library renews it for you while the member stays signed in:
+
+- **Next.js:** the [page check](#gate-pages) above renews it on every request, so pages always see a fresh one. Route handlers and server actions renew it themselves. In a server component without the page check, `getMemberPass` returns `null` once the pass has run out.
+- **Node:** `getMemberPass(req, res)` renews it and updates the session cookie on `res`.
+
+Signing out of Sandbox, or choosing Stop sharing for your app, ends the renewal. A pass already handed out still works until its hour is up.
+
+*Added in v0.8.0.* Members signed in before your app moved to v0.8.0 have no pass until they sign in again.
 
 ## Sign out
 
@@ -302,12 +338,13 @@ When someone signs out of Sandbox, their session ends in every app, not just the
 | `GET(request)` | the default callback handler — `export { GET } from "sandbox-auth/next"` |
 | `callback(overrides?)` | a callback handler with explicit config |
 | `getSession(overrides?)` | the signed-in member, or `null` |
+| `getMemberPass(overrides?)` | the member pass for calling the directory, renewed when it can be, or `null` |
 | `signOut(response, overrides?, postLogout?)` | clears the cookie on `response`, returns the auth sign-out URL |
 | `signOutUrl(overrides?, postLogout?)` | the auth sign-out URL |
 
-**`sandbox-auth/node`** — `sandboxAuth(overrides?)` returns `{ cfg, handleCallback(req, res), getSession(req), signOut(req, res) }`.
+**`sandbox-auth/node`** — `sandboxAuth(overrides?)` returns `{ cfg, handleCallback(req, res), getSession(req), getMemberPass(req, res), signOut(req, res) }`.
 
-**`sandbox-auth/core`** — the building blocks the adapters use, and what you reach for in the proxy: `resolveConfig`, `sessionToken`, `cookieName`, `readSession`, `revoked`, `completeSignIn`, `endSessionUrl`. `sessionToken(cookies)` reads the session cookie without needing any configuration.
+**`sandbox-auth/core`** — the building blocks the adapters use, and what you reach for in the proxy: `resolveConfig`, `sessionToken`, `cookieName`, `readSession`, `revoked`, `completeSignIn`, `endSessionUrl`, `memberPass`, `renewSession`. `sessionToken(cookies)` reads the session cookie without needing any configuration.
 
 ---
 

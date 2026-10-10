@@ -5,7 +5,9 @@
 // and where it needs the member:  const member = await getSession();
 import { NextResponse } from 'next/server';
 import { cookies as nextCookies } from 'next/headers';
-import { resolveConfig, completeSignIn, readSession, revoked, endSessionUrl, cookieName, sessionToken } from './core.mjs';
+import {
+  resolveConfig, completeSignIn, readSession, revoked, endSessionUrl, cookieName, sessionToken, memberPass,
+} from './core.mjs';
 
 function cfgOnce(overrides) {
   return resolveConfig(overrides);
@@ -72,6 +74,38 @@ export async function getSession(overrides = {}) {
   // A session the member has since signed out of Sandbox is no session here.
   if (session && await revoked(cfg, session)) return null;
   return session;
+}
+
+/**
+ * The member pass, for calling the directory as this member: a current one,
+ * or null when nobody is signed in or there is none to be had.
+ *
+ * In a route handler or server action, an expired pass is renewed and the
+ * session cookie updated. In a server component cookies can't be written, so
+ * it is not renewed there — the proxy in the README keeps it fresh on every
+ * request instead.
+ */
+export async function getMemberPass(overrides = {}) {
+  const store = await nextCookies();
+  const token = sessionToken(store, overrides);
+  if (!token) return null;
+  const cfg = cfgOnce(overrides);
+  const current = await memberPass(cfg, token);
+  if (current.pass) return current.pass;
+
+  const secure = Boolean(store.get(cookieName(cfg, true)));
+  const name = cookieName(cfg, secure);
+  const options = { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: cfg.sessionTtl };
+  // Renewing uses up the refresh token, so only where the new one can be kept.
+  try {
+    store.set(name, token, options);
+  } catch {
+    return null;
+  }
+  const renewed = await memberPass(cfg, token, { renew: true });
+  if (!renewed.token) return null;
+  store.set(name, renewed.token, options);
+  return renewed.pass;
 }
 
 export function signOutUrl(overrides = {}, postLogout) {
