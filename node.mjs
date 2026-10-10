@@ -1,6 +1,9 @@
 // The Node http adapter. A property with a plain server wires three methods and
 // is done.
-import { resolveConfig, completeSignIn, readSession, revoked, endSessionUrl, cookieName, memberPass } from './core.mjs';
+import {
+  resolveConfig, completeSignIn, readSession, revoked, endSessionUrl, cookieName, memberPass,
+  needsPassUpgrade, startSignIn, UPGRADE_COOKIE,
+} from './core.mjs';
 
 function parseCookies(req) {
   const out = {};
@@ -90,6 +93,30 @@ export function sandboxAuth(overrides = {}) {
           `${cookieName(cfg, secure)}=${renewed.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${cfg.sessionTtl}${secure ? '; Secure' : ''}`);
       }
       return renewed.pass;
+    },
+
+    // Signed in before the member pass could renew: once per session, on a
+    // page load, a quick trip through auth to pick up a refresh token. Call
+    // it at the top of a page handler; when it returns true it has answered
+    // with a redirect, and the handler should stop there.
+    async upgradePass(req, res) {
+      if (req.method !== 'GET' || !(req.headers.accept ?? '').includes('text/html')) return false;
+      const cookies = parseCookies(req);
+      if (cookies[UPGRADE_COOKIE]) return false;
+      const secure = Boolean(cookies[cookieName(cfg, true)]);
+      const token = cookies[cookieName(cfg, secure)];
+      if (!token || !(await needsPassUpgrade(cfg, token))) return false;
+      const origin = originOf(req);
+      const { url, tx } = await startSignIn(cfg, { origin, next: req.url });
+      const flags = `; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+      res.statusCode = 302;
+      res.setHeader('set-cookie', [
+        `${cfg.txCookie}=${tx}; Max-Age=600${flags}`,
+        `${UPGRADE_COOKIE}=1; Max-Age=${cfg.sessionTtl}${flags}`,
+      ]);
+      res.setHeader('location', url);
+      res.end();
+      return true;
     },
 
     // Ends the local session; returns the auth sign-out URL to offer.

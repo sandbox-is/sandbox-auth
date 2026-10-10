@@ -1,6 +1,6 @@
 {
   "name": "sandbox-auth",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "description": "Drop-in client for Sign in with Sandbox (auth.sandbox.is)",
   "exports": {
@@ -14,6 +14,10 @@
     "./next": {
       "types": "./next.d.ts",
       "default": "./next.mjs"
+    },
+    "./proxy": {
+      "types": "./proxy.d.ts",
+      "default": "./proxy.mjs"
     }
   },
   "peerDependencies": {

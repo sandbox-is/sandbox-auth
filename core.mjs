@@ -242,3 +242,62 @@ export function endSessionUrl(cfg, postLogout) {
   if (postLogout) url.searchParams.set('post_logout_redirect_uri', postLogout);
   return url.href;
 }
+
+// ---------------------------------------------------------------- upgrading
+//
+// Members who signed in before their app moved to v0.8.0 have a session with
+// no refresh token, so their member pass can't renew. One trip through auth —
+// with their Sandbox sign-in still active, an instant round trip with nothing
+// to click — gives them one. These start that trip on the server, the way the
+// button starts a sign-in in the browser.
+
+// Marks a session as having been sent once, so a refusal can't loop.
+export const UPGRADE_COOKIE = 'sbx_pass_upgrade';
+
+const b64url = (bytes) => btoa(String.fromCharCode(...bytes))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+function random(n) {
+  const bytes = new Uint8Array(n);
+  globalThis.crypto.getRandomValues(bytes);
+  return b64url(bytes);
+}
+
+async function s256(verifier) {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return b64url(new Uint8Array(digest));
+}
+
+/** Whether this valid session can't renew its member pass: it holds no refresh token. */
+export async function needsPassUpgrade(cfg, token) {
+  try {
+    const { payload } = await jwtVerify(token ?? '', secretBytes(cfg));
+    return !payload.rt;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A sign-in started on the server: the address to send the browser to, and
+ * the value of the transaction cookie (cfg.txCookie) the callback will read.
+ * It asks to stay signed in, as the button does, and comes back to `next`.
+ */
+export async function startSignIn(cfg, { origin, next = '/' }) {
+  const verifier = random(32);
+  const state = random(16);
+  const nonce = random(16);
+  const url = new URL(`${cfg.authOrigin}/auth`);
+  url.search = new URLSearchParams({
+    client_id: cfg.clientId,
+    response_type: 'code',
+    scope: 'openid offline_access',
+    prompt: 'consent',
+    redirect_uri: `${origin}${cfg.callbackPath}`,
+    state,
+    nonce,
+    code_challenge: await s256(verifier),
+    code_challenge_method: 'S256',
+  }).toString();
+  return { url: url.href, tx: encodeURIComponent(JSON.stringify({ state, nonce, verifier, next: safeNext(next) })) };
+}
