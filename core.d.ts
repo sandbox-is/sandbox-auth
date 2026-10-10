@@ -11,3 +11,8 @@ export function endSessionUrl(cfg: unknown, postLogout?: string): string;
 export function memberPass(cfg: unknown, token?: string, options?: { renew?: boolean }): Promise<{ pass: string | null; token?: string }>;
 /** A renewed session token when the pass in this one has run out, or null when nothing needs doing. */
 export function renewSession(cfg: unknown, token?: string): Promise<string | null>;
+export const UPGRADE_COOKIE: string;
+/** Whether this valid session holds no refresh token, so its member pass can't renew. */
+export function needsPassUpgrade(cfg: unknown, token?: string): Promise<boolean>;
+/** A sign-in started on the server: where to send the browser, and the transaction cookie value. */
+export function startSignIn(cfg: unknown, options: { origin: string; next?: string }): Promise<{ url: string; tx: string }>;
