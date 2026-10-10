@@ -1,6 +1,6 @@
 // The Node http adapter. A property with a plain server wires three methods and
 // is done.
-import { resolveConfig, completeSignIn, readSession, revoked, endSessionUrl, cookieName } from './core.mjs';
+import { resolveConfig, completeSignIn, readSession, revoked, endSessionUrl, cookieName, memberPass } from './core.mjs';
 
 function parseCookies(req) {
   const out = {};
@@ -75,6 +75,21 @@ export function sandboxAuth(overrides = {}) {
       // A session the member has since signed out of Sandbox is no session here.
       if (session && await revoked(cfg, session)) return null;
       return session;
+    },
+
+    // The member pass, for calling the directory as this member, renewed
+    // when it has run out — the session cookie is updated on `res`.
+    async getMemberPass(req, res) {
+      const cookies = parseCookies(req);
+      const secure = Boolean(cookies[cookieName(cfg, true)]);
+      const token = cookies[cookieName(cfg, secure)];
+      if (!token) return null;
+      const renewed = await memberPass(cfg, token, { renew: true });
+      if (renewed.token) {
+        res.appendHeader('set-cookie',
+          `${cookieName(cfg, secure)}=${renewed.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${cfg.sessionTtl}${secure ? '; Secure' : ''}`);
+      }
+      return renewed.pass;
     },
 
     // Ends the local session; returns the auth sign-out URL to offer.
