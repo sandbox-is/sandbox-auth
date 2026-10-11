@@ -26,7 +26,7 @@ The examples below cover Next.js and Node. Setting it up is four small steps, af
 Sign in with Sandbox is for Sandbox members. To use it in an app you build:
 
 1. **Deploy it first.** Linking needs your app's live https address. That first deploy can go out without a client id: it builds, protected pages send people to your login page, and the login page shows no button yet. You can set `SANDBOX_AUTH_CLIENT_SESSION_SECRET` straight away; only the client id waits until you link it.
-2. **Link it** on the Developers page at [members.sandbox.is/developers](https://members.sandbox.is/developers) (you sign in with Sandbox). Give its address, a local port for development if you want one, and any [profile fields](#profile-fields) you'd like to ask for. The page shows your client id right away.
+2. **Link it** on the Developers page, under Your apps, at [members.sandbox.is/developers/apps](https://members.sandbox.is/developers/apps) (you sign in with Sandbox). Give its address, a local port for development if you want one, and any [profile fields](#profile-fields) you'd like to ask for. The page shows your client id right away.
 3. **Add the id** to your app's environment ([configuration](#3-configuration)), including for its build step, and deploy again.
 
 What auth accepts as your app's address:
@@ -48,7 +48,7 @@ Install it from GitHub, pinned to a version tag. It isn't published to npm.
 ```json
 {
   "dependencies": {
-    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.8.1",
+    "sandbox-auth": "git+https://github.com/sandbox-is/sandbox-auth.git#v0.8.2",
     "jose": "^5"
   }
 }
@@ -199,12 +199,22 @@ An app a member built can ask for these profile fields when it's linked. Each on
 | `current_city` | the city they live in now |
 | `current_hub` | the name of their current Sandbox hub |
 | `entry_hub` | the name of the hub they joined through |
-| `member_since` | when they became a member |
+| `member_since` | the year they became a member, as a number |
 | `date_of_birth` | `YYYY-MM-DD`, or `--MM-DD` if they hide their birth year |
 
 ```ts
-const city = member.member_data?.current_city; // undefined unless they shared it
+const city = member.member_data?.current_city; // a string, or undefined unless they shared it
 ```
+
+In TypeScript, `member_data` is typed with these keys (`SandboxMemberData`), so there's no need to check each value's type.
+
+### When the details change
+
+Your app keeps a copy of the member's details in its session cookie, taken when they signed in. If your app [renews the member pass](#act-for-the-member-at-the-directory), the copy is updated each time the pass is: at most an hour behind while the member is using your app. If not, it stays as it was until they sign in again.
+
+Auth's own copy of name, email, phone and photo is taken when the member enters a sign-in code. A photo they add on the directory reaches your app after their next sign-in to Sandbox with a code. Profile fields are read from the directory every time, so they're never more than an hour behind.
+
+*Renewal updates the details from v0.8.2; before that, only signing in again did.*
 
 ## Gate pages
 
@@ -233,6 +243,8 @@ On a plain **Node** server there's no separate step. Call `sandbox.getSession(re
 ## Act for the member at the directory
 
 The members directory has an API apps can call for a signed-in member, such as searching for other members. Each call needs a **member pass**: a short-lived token from auth that proves which member is signed in to your app. The directory checks it.
+
+**The API's documentation** is at [members.sandbox.is/docs](https://members.sandbox.is/docs), with its OpenAPI description at [/api/v1/openapi.json](https://members.sandbox.is/api/v1/openapi.json). Where it asks for a member id, that's the session's `sub`.
 
 ```ts
 // Next.js — in a route handler, server action or server component
