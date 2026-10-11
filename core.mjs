@@ -169,8 +169,27 @@ export async function memberPass(cfg, token, { renew = false } = {}) {
   const pass = passFrom(body);
   if (!pass.pass) return { pass: null };
 
-  const member = withOptional({ sub: String(payload.sub), name: payload.name, email: payload.email }, payload);
+  // Renewing comes with a new identity token, so the session takes the
+  // member's details from it: a photo they added, a field they now share.
+  // Should it not verify, the details already in the session stand.
+  const kept = withOptional({ sub: String(payload.sub), name: payload.name, email: payload.email }, payload);
+  const member = (await freshMember(cfg, body.id_token, kept.sub)) ?? kept;
   return { pass: pass.pass, token: await signSession(cfg, member, pass, { iat: payload.iat, exp: payload.exp }) };
+}
+
+async function freshMember(cfg, idToken, sub) {
+  if (!idToken) return null;
+  try {
+    const { payload: claims } = await jwtVerify(
+      idToken,
+      keysFor(cfg.authOrigin, cfg.bypass ? { 'x-vercel-protection-bypass': cfg.bypass } : null),
+      { issuer: cfg.authOrigin, audience: cfg.clientId },
+    );
+    if (String(claims.sub) !== sub) return null;
+    return withOptional({ sub, name: claims.name, email: claims.email }, claims);
+  } catch {
+    return null;
+  }
 }
 
 /**

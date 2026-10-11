@@ -1,6 +1,6 @@
 {
   "name": "sandbox-auth",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "description": "Drop-in client for Sign in with Sandbox (auth.sandbox.is)",
   "exports": {
