@@ -66,11 +66,24 @@ export function sessionToken(cookies, overrides = {}) {
 const secretBytes = (cfg) => new TextEncoder().encode(cfg.sessionSecret);
 const safeNext = (n) => (typeof n === 'string' && n.startsWith('/') && !n.startsWith('//') ? n : '/');
 
+// The transaction cookie is written as encodeURIComponent(JSON), but whether
+// it arrives decoded depends on who read it. The node adapter hands over the
+// raw header value; Next's request.cookies has already decoded it. Decoding a
+// second time is not harmless: `next` can hold an encoded query of its own,
+// such as auth's return address on /profile?return=…, and a second decode
+// turns its %26s into real separators, so everything after the first one is
+// lost. An encoded value never starts with "{" (encodeURIComponent writes
+// %7B), so a value that does has been decoded already.
+function readTx(value) {
+  const raw = value || '';
+  return raw.startsWith('{') ? raw : decodeURIComponent(raw);
+}
+
 // The callback, as pure data in and out: the button's cookie and the query
 // become either a session token (and where to go next) or an error.
 export async function completeSignIn({ cfg, query, cookies, redirectUri }) {
   let tx;
-  try { tx = JSON.parse(decodeURIComponent(cookies[cfg.txCookie] || '')); } catch { tx = null; }
+  try { tx = JSON.parse(readTx(cookies[cfg.txCookie])); } catch { tx = null; }
   if (!tx || !tx.verifier) return { error: 'no_transaction' };
   if (query.error) return { error: String(query.error) };
   if (query.state !== tx.state) return { error: 'state_mismatch' };
