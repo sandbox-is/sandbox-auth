@@ -56,11 +56,14 @@ export function cookieName(cfg, secure) {
 // so does not wait for the app to have its client id.
 export function sessionToken(cookies, overrides = {}) {
   const base = { cookieBase: overrides.cookieName ?? DEFAULT_COOKIE };
+  // An empty cookie is no cookie. A stale empty one under the https name, left
+  // on a shared host like localhost, must not hide the real session under the
+  // other name.
   const read = (name) => {
     const found = cookies.get(name);
-    return typeof found === 'string' ? found : found?.value;
+    return (typeof found === 'string' ? found : found?.value) || null;
   };
-  return read(cookieName(base, true)) ?? read(cookieName(base, false)) ?? null;
+  return read(cookieName(base, true)) ?? read(cookieName(base, false));
 }
 
 const secretBytes = (cfg) => new TextEncoder().encode(cfg.sessionSecret);
